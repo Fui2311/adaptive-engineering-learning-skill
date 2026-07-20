@@ -56,17 +56,17 @@ adaptive-engineering-learning/
 
 ## 安装
 
-Codex 会扫描仓库中从当前工作目录到仓库根目录之间的 `.agents/skills`。
+本仓库根目录就是完整 Skill 包，可以直接克隆到 Codex 的 Skill 发现目录。Codex 会扫描仓库中从当前工作目录到仓库根目录之间的 `.agents/skills`。
 
-### 方式一：复制到目标项目
+### 方式一：安装到目标项目
 
-把下面的目录复制到目标仓库：
+在目标项目根目录运行：
 
 ```text
-.agents/skills/adaptive-engineering-learning/
+git clone https://github.com/Fui2311/adaptive-engineering-learning-skill.git .agents/skills/adaptive-engineering-learning
 ```
 
-最终结构应为：
+最终结构为：
 
 ```text
 your-project/
@@ -76,12 +76,18 @@ your-project/
          └─ SKILL.md
 ```
 
-### 方式二：作为个人 Skill 使用
+### 方式二：安装为个人 Skill
 
-复制到用户级目录：
+macOS / Linux：
 
 ```text
-~/.agents/skills/adaptive-engineering-learning/
+git clone https://github.com/Fui2311/adaptive-engineering-learning-skill.git ~/.agents/skills/adaptive-engineering-learning
+```
+
+Windows PowerShell：
+
+```text
+git clone https://github.com/Fui2311/adaptive-engineering-learning-skill.git "$HOME/.agents/skills/adaptive-engineering-learning"
 ```
 
 Codex 通常会自动发现新增或更新的 Skill；如果没有显示，请重启 Codex。
@@ -264,7 +270,7 @@ python <skill-dir>/scripts/learning_state.py archive --repo <repo>
 状态测试：
 
 ```text
-python skill-src/adaptive-engineering-learning/scripts/test_learning_state.py
+python scripts/test_learning_state.py
 ```
 
 当前测试覆盖：
@@ -282,12 +288,7 @@ python skill-src/adaptive-engineering-learning/scripts/test_learning_state.py
 
 ## 仓库目录说明
 
-- `.agents/skills/adaptive-engineering-learning/`：Codex 实际发现和使用的副本。
-- `skill-src/adaptive-engineering-learning/`：可编辑的源目录。
-- `docs/`：设计诊断与场景验证说明。
-- `AGENTS.md`：本仓库的维护与验证规则。
-
-源目录与可发现副本应保持一致。
+本仓库是独立的 Skill 发布包，仓库根目录即 Skill 根目录。克隆到 `.agents/skills/adaptive-engineering-learning` 后即可被 Codex 发现，不包含原设计工作区、内部维护副本或项目过程文件。
 
 ## 能力边界
 
@@ -298,8 +299,3 @@ python skill-src/adaptive-engineering-learning/scripts/test_learning_state.py
 - 它不会在重新扫描后自动覆盖已经确认的计划。
 - 它不会因为阅读过一次代码就把任务标记为 `mastered`。
 - 真实教学质量仍取决于仓库源码、构建环境和可验证证据。
-
-## 设计文档
-
-- [原 Prompt 诊断与最终架构](docs/adaptive-engineering-learning-design.md)
-- [验证场景与结果](docs/validation-scenarios.md)
