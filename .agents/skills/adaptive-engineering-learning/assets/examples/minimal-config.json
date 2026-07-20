@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "learning": {
+    "mode": "mentor",
+    "explanation_depth": "normal",
+    "exercise_enabled": true,
+    "review_enabled": true
+  },
+  "permissions": {
+    "allow_test_skeletons": false,
+    "allow_business_code_changes": false
+  },
+  "planning": {
+    "require_confirmation": true,
+    "auto_activate_plan": false
+  },
+  "notes": {
+    "enabled": true,
+    "location": "project",
+    "project_path": ".learning/notes",
+    "custom_path": null,
+    "fallback_to_project": true,
+    "namespace_by_project": false,
+    "session_logs": true,
+    "update_existing_notes": true,
+    "git_tracking": "ask",
+    "categories": {
+      "concepts": true,
+      "architecture": true,
+      "debugging": true,
+      "project": true
+    }
+  },
+  "progress": {
+    "enabled": true,
+    "mastery_requires_evidence": true
+  },
+  "project": {
+    "focus": [],
+    "excluded_topics": []
+  }
+}
