@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "learning": {
     "mode": "mentor",
     "explanation_depth": "normal",
@@ -13,6 +13,13 @@
   "planning": {
     "require_confirmation": true,
     "auto_activate_plan": false
+  },
+  "coordination": {
+    "multi_workstream": true,
+    "mainline_workstream_id": "mainline",
+    "auto_accept_verified_shared_updates": true,
+    "plan_changes_require_confirmation": true,
+    "lock_timeout_seconds": 5
   },
   "notes": {
     "enabled": true,
@@ -33,7 +40,8 @@
   },
   "progress": {
     "enabled": true,
-    "mastery_requires_evidence": true
+    "mastery_requires_evidence": true,
+    "mastery_requires_learner_origin": true
   },
   "project": {
     "focus": [],

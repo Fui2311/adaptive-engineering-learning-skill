@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import subprocess
 import sys
 import tempfile
@@ -10,192 +11,721 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).with_name("learning_state.py")
+SPEC = importlib.util.spec_from_file_location("learning_state_under_test", SCRIPT)
+assert SPEC and SPEC.loader
+STATE_MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(STATE_MODULE)
 
 
 class LearningStateScenarios(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
-        self.repo = Path(self.temp.name) / "repo"
+        self.root = Path(self.temp.name)
+        self.repo = self.root / "repo"
         self.repo.mkdir()
-        self.inputs = Path(self.temp.name) / "inputs"
+        self.inputs = self.root / "inputs"
         self.inputs.mkdir()
         self.project = self.inputs / "project.json"
         self.plan = self.inputs / "plan.json"
-        self.project.write_text(json.dumps({
-            "schema_version": 1,
-            "name": "sample-go-api",
-            "repository_path": str(self.repo),
-            "stack": ["Go", "Gin"],
-            "entrypoints": ["cmd/server/main.go"],
-            "modules": ["http", "service", "repository"],
-            "commands": {"test": {"command": "go test ./...", "verified": False}},
-            "learning_value_summary": "Useful request-lifecycle example",
-            "scan": {"git_head": None},
-        }, ensure_ascii=False), encoding="utf-8")
-        self.plan.write_text(json.dumps({
-            "schema_version": 1,
-            "plan_version": 1,
-            "status": "proposed",
-            "goals": ["Trace a complete request"],
-            "stages": [
+        self.project.write_text(
+            json.dumps(
                 {
-                    "id": "request-flow",
-                    "title": "Request lifecycle",
-                    "learning_thread": "Trace route, middleware, handler, service, repository, and response.",
-                    "core_questions": ["Where does the request enter?"],
-                    "source_scope": ["cmd/server", "internal/http"],
-                    "prerequisites": ["basic Go"],
-                    "exercise": None,
-                    "completion_criteria": ["Learner explains the call chain"],
-                    "skippable": False,
-                    "optional": False,
+                    "schema_version": 2,
+                    "name": "sample-go-api",
+                    "repository_path": str(self.repo),
+                    "stack": ["Go", "Gin"],
+                    "entrypoints": ["cmd/server/main.go"],
+                    "modules": ["http", "service", "repository"],
+                    "commands": {
+                        "test": {"command": "go test ./...", "verified": False}
+                    },
+                    "learning_value_summary": "Useful request-lifecycle example",
+                    "scan": {"git_head": None},
                 },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        self.plan.write_text(
+            json.dumps(
                 {
-                    "id": "database",
-                    "title": "Database boundary",
-                    "learning_thread": "Trace persistence and transaction ownership.",
-                    "core_questions": ["Who owns the transaction?"],
-                    "source_scope": ["internal/repository"],
-                    "prerequisites": ["SQL basics"],
-                    "exercise": None,
-                    "completion_criteria": ["Learner explains transaction ownership"],
-                    "skippable": True,
-                    "optional": False,
+                    "schema_version": 2,
+                    "plan_version": 1,
+                    "status": "proposed",
+                    "goals": ["Trace a complete request"],
+                    "stages": [
+                        {
+                            "id": "request-flow",
+                            "title": "Request lifecycle",
+                            "learning_thread": "Trace route, middleware, handler, service, repository, and response.",
+                            "core_questions": ["Where does the request enter?"],
+                            "source_scope": ["cmd/server", "internal/http"],
+                            "prerequisites": ["basic Go"],
+                            "exercise": None,
+                            "completion_criteria": [
+                                "Learner explains the call chain"
+                            ],
+                            "skippable": False,
+                            "optional": False,
+                        },
+                        {
+                            "id": "database",
+                            "title": "Database boundary",
+                            "learning_thread": "Trace persistence and transaction ownership.",
+                            "core_questions": ["Who owns the transaction?"],
+                            "source_scope": ["internal/repository"],
+                            "prerequisites": ["SQL basics"],
+                            "exercise": None,
+                            "completion_criteria": [
+                                "Learner explains transaction ownership"
+                            ],
+                            "skippable": True,
+                            "optional": False,
+                        },
+                    ],
+                    "skipped_topics": [],
+                    "optional_topics": [],
+                    "manual_adjustments": [],
+                    "change_log": [],
                 },
-            ],
-            "skipped_topics": [],
-            "optional_topics": [],
-            "manual_adjustments": [],
-            "change_log": [],
-        }, ensure_ascii=False), encoding="utf-8")
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
 
     def tearDown(self) -> None:
         self.temp.cleanup()
 
     def run_cli(self, *args: str, expected: int = 0) -> dict:
         result = subprocess.run(
-            [sys.executable, str(SCRIPT), *args], capture_output=True,
-            text=True, encoding="utf-8", errors="replace", check=False,
+            [sys.executable, str(SCRIPT), *args],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
         )
-        self.assertEqual(expected, result.returncode, msg=result.stdout + result.stderr)
+        self.assertEqual(
+            expected, result.returncode, msg=result.stdout + result.stderr
+        )
         return json.loads(result.stdout)
 
     def propose(self) -> dict:
         return self.run_cli(
-            "propose", "--repo", str(self.repo), "--project", str(self.project),
-            "--plan", str(self.plan),
+            "propose",
+            "--repo",
+            str(self.repo),
+            "--project",
+            str(self.project),
+            "--plan",
+            str(self.plan),
         )
 
     def activate(self) -> dict:
         return self.run_cli(
-            "activate", "--repo", str(self.repo),
-            "--confirmation", "Database later; request lifecycle first.",
+            "activate",
+            "--repo",
+            str(self.repo),
+            "--confirmation",
+            "Database later; request lifecycle first.",
         )
 
-    def test_scenario_1_proposal_does_not_create_progress(self) -> None:
+    def initialize(self) -> None:
+        self.propose()
+        self.activate()
+
+    def open_qa(self) -> dict:
+        return self.run_cli(
+            "open-workstream",
+            "--repo",
+            str(self.repo),
+            "--id",
+            "qa-http",
+            "--kind",
+            "qa",
+            "--title",
+            "HTTP Q&A",
+            "--task",
+            "request-flow-chapter",
+            "--focus",
+            "Resolve middleware questions without moving mainline progress",
+        )
+
+    def test_proposal_does_not_create_runtime_state(self) -> None:
         output = self.propose()
         self.assertEqual("proposed", output["status"])
-        self.assertFalse((self.repo / ".learning" / "progress.json").exists())
-        plan = json.loads((self.repo / ".learning" / "plan.json").read_text(encoding="utf-8"))
-        self.assertEqual("proposed", plan["status"])
+        state = self.repo / ".learning"
+        self.assertFalse((state / "workspace.json").exists())
+        self.assertFalse((state / "progress.json").exists())
+        plan = json.loads((state / "plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(2, plan["schema_version"])
 
-    def test_scenario_2_activation_requires_confirmation_and_initializes_one_current_task(self) -> None:
+    def test_activation_requires_confirmation_and_creates_mainline(self) -> None:
         self.propose()
-        denied = self.run_cli("activate", "--repo", str(self.repo), "--confirmation", "", expected=2)
+        denied = self.run_cli(
+            "activate",
+            "--repo",
+            str(self.repo),
+            "--confirmation",
+            "",
+            expected=2,
+        )
         self.assertIn("confirmation", denied["error"])
         output = self.activate()
-        self.assertEqual("request-flow-task-01", output["current_task_id"])
-        progress = json.loads((self.repo / ".learning" / "progress.json").read_text(encoding="utf-8"))
-        self.assertEqual("learning", progress["tasks"]["request-flow-task-01"]["status"])
-        self.assertEqual("not_started", progress["tasks"]["database-task-01"]["status"])
-
-    def test_scenario_3_resume_reads_current_task_without_rescan(self) -> None:
-        self.propose()
-        self.activate()
-        state = self.run_cli("show", "--repo", str(self.repo))
-        self.assertEqual("request-flow-task-01", state["progress"]["current_task_id"])
-        self.assertEqual("active", state["plan"]["status"])
-
-    def test_scenario_4_question_updates_only_current_task(self) -> None:
-        self.propose()
-        self.activate()
-        self.run_cli(
-            "update-task", "--repo", str(self.repo), "--task", "request-flow-task-01",
-            "--status", "questioning", "--question", "Why middleware instead of handler code?",
+        self.assertEqual("mainline", output["mainline_workstream_id"])
+        self.assertEqual("request-flow-chapter", output["current_task_id"])
+        state = self.repo / ".learning"
+        self.assertTrue((state / "dashboard.md").exists())
+        self.assertTrue((state / "handoffs" / "mainline.md").exists())
+        first = json.loads(
+            (state / "tasks" / "request-flow-chapter.json").read_text(
+                encoding="utf-8"
+            )
         )
-        progress = json.loads((self.repo / ".learning" / "progress.json").read_text(encoding="utf-8"))
-        self.assertEqual(1, len(progress["tasks"]["request-flow-task-01"]["open_questions"]))
-        self.assertEqual("not_started", progress["tasks"]["database-task-01"]["status"])
+        second = json.loads(
+            (state / "tasks" / "database-chapter.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual("learning", first["status"])
+        self.assertEqual("not_started", second["status"])
 
-    def test_scenario_5_session_close_is_compact_and_mastery_needs_evidence(self) -> None:
-        self.propose()
-        self.activate()
+    def test_multiple_workstreams_keep_resume_state_isolated(self) -> None:
+        self.initialize()
+        self.open_qa()
+        self.run_cli(
+            "checkpoint",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "qa-http",
+            "--resume-at",
+            "Explain middleware ordering",
+            "--next-step",
+            "Compare two middleware implementations",
+            "--code",
+            "internal/http/middleware.go:20",
+        )
+        mainline = json.loads(
+            (
+                self.repo
+                / ".learning"
+                / "workstreams"
+                / "mainline.json"
+            ).read_text(encoding="utf-8")
+        )
+        qa = json.loads(
+            (
+                self.repo / ".learning" / "workstreams" / "qa-http.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertIsNone(mainline["resume_at"])
+        self.assertEqual("Explain middleware ordering", qa["resume_at"])
+        dashboard = (self.repo / ".learning" / "dashboard.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("qa-http", dashboard)
+
+    def test_qa_workstream_cannot_directly_move_task_status(self) -> None:
+        self.initialize()
+        self.open_qa()
         denied = self.run_cli(
-            "update-task", "--repo", str(self.repo), "--task", "request-flow-task-01",
-            "--status", "mastered", expected=2,
+            "update-task",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "qa-http",
+            "--task",
+            "request-flow-chapter",
+            "--status",
+            "mastered",
+            "--evidence",
+            "Question was answered",
+            "--learner-originated",
+            expected=2,
         )
-        self.assertIn("evidence", denied["error"])
-        self.run_cli(
-            "update-task", "--repo", str(self.repo), "--task", "request-flow-task-01",
-            "--status", "mastered", "--evidence", "Learner explained route-to-response flow",
-            "--next-step", "Trace database errors",
-        )
-        session = self.inputs / "session.json"
-        session.write_text(json.dumps({
-            "title": "Request lifecycle",
-            "goal": "Trace one request",
-            "completed": ["Traced request flow"],
-            "core_files": ["internal/http/routes.go"],
-            "key_insights": ["Middleware owns cross-cutting concerns"],
-            "exercises": [],
-            "open_questions": ["How are DB errors mapped?"],
-            "next_step": "Trace database errors",
-        }), encoding="utf-8")
-        output = self.run_cli("record-session", "--repo", str(self.repo), "--session", str(session))
-        log = Path(output["path"]).read_text(encoding="utf-8")
-        self.assertIn("## Goal", log)
-        self.assertNotIn("full chat", log.lower())
-        doctor = self.run_cli("doctor", "--repo", str(self.repo))
-        self.assertTrue(doctor["ok"])
+        self.assertIn("do not directly change task state", denied["error"])
 
-    def test_custom_notes_missing_path_falls_back_without_claiming_success(self) -> None:
-        self.propose()
-        missing = Path(self.temp.name) / "missing-vault"
+    def test_cross_workstream_publish_and_sync_share_knowledge_and_questions(self) -> None:
+        self.initialize()
+        self.open_qa()
+        self.run_cli(
+            "publish",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "qa-http",
+            "--kind",
+            "answer",
+            "--task",
+            "request-flow-chapter",
+            "--summary",
+            "Middleware runs in registration order.",
+            "--verification",
+            "verified",
+            "--source",
+            "internal/http/routes.go:18",
+        )
+        self.run_cli(
+            "publish",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "qa-http",
+            "--kind",
+            "question",
+            "--task",
+            "request-flow-chapter",
+            "--summary",
+            "Where are database errors mapped?",
+        )
         output = self.run_cli(
-            "set-notes", "--repo", str(self.repo), "--location", "custom",
-            "--path", str(missing), "--fallback",
+            "sync",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "mainline",
+        )
+        self.assertEqual(2, output["processed_count"])
+        shared = json.loads(
+            (self.repo / ".learning" / "shared.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(1, len(shared["knowledge"]))
+        self.assertEqual(1, len(shared["questions"]))
+        task = json.loads(
+            (
+                self.repo
+                / ".learning"
+                / "tasks"
+                / "request-flow-chapter.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(1, len(task["open_questions"]))
+
+    def test_answer_sync_keeps_unrelated_task_revision_stable(self) -> None:
+        self.initialize()
+        self.open_qa()
+        task_path = (
+            self.repo / ".learning" / "tasks" / "request-flow-chapter.json"
+        )
+        before = json.loads(task_path.read_text(encoding="utf-8"))["revision"]
+        self.run_cli(
+            "publish",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "qa-http",
+            "--kind",
+            "answer",
+            "--task",
+            "request-flow-chapter",
+            "--summary",
+            "Authentication stays transport-agnostic.",
+            "--verification",
+            "verified",
+            "--source",
+            "src/auth.py:1",
+        )
+        self.run_cli(
+            "sync",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "mainline",
+        )
+        after = json.loads(task_path.read_text(encoding="utf-8"))["revision"]
+        self.assertEqual(before, after)
+
+    def test_plan_change_is_queued_and_never_auto_applied(self) -> None:
+        self.initialize()
+        self.open_qa()
+        self.run_cli(
+            "publish",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "qa-http",
+            "--kind",
+            "plan_change",
+            "--summary",
+            "Move database before HTTP.",
+        )
+        output = self.run_cli(
+            "sync",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "mainline",
+        )
+        self.assertFalse(output["plan_changes_auto_applied"])
+        plan = json.loads(
+            (self.repo / ".learning" / "plan.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual("request-flow", plan["stages"][0]["id"])
+        contribution = next((self.repo / ".learning" / "inbox").glob("*.json"))
+        value = json.loads(contribution.read_text(encoding="utf-8"))
+        self.assertEqual("queued", value["status"])
+
+    def test_learner_evidence_can_cross_workstreams_but_does_not_auto_master(self) -> None:
+        self.initialize()
+        self.open_qa()
+        self.run_cli(
+            "publish",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "qa-http",
+            "--kind",
+            "evidence",
+            "--task",
+            "request-flow-chapter",
+            "--summary",
+            "Learner independently predicted middleware order.",
+            "--learner-originated",
+        )
+        self.run_cli(
+            "sync",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "mainline",
+        )
+        task_path = (
+            self.repo / ".learning" / "tasks" / "request-flow-chapter.json"
+        )
+        task = json.loads(task_path.read_text(encoding="utf-8"))
+        self.assertEqual("learning", task["status"])
+        self.assertEqual(1, len(task["evidence"]))
+        output = self.run_cli(
+            "update-task",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "mainline",
+            "--task",
+            "request-flow-chapter",
+            "--status",
+            "mastered",
+        )
+        self.assertEqual("mastered", output["status"])
+
+    def test_mastery_rejects_codex_only_evidence(self) -> None:
+        self.initialize()
+        denied = self.run_cli(
+            "update-task",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "mainline",
+            "--task",
+            "request-flow-chapter",
+            "--status",
+            "mastered",
+            "--evidence",
+            "Codex implemented the change",
+            expected=2,
+        )
+        self.assertIn("learner-originated", denied["error"])
+
+    def test_create_feature_task_and_implementation_workstream_require_confirmation(
+        self,
+    ) -> None:
+        self.initialize()
+        denied_task = self.run_cli(
+            "create-task",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "mainline",
+            "--id",
+            "feature-auth",
+            "--stage",
+            "request-flow",
+            "--kind",
+            "implementation",
+            "--title",
+            "Implement auth middleware",
+            "--objective",
+            "Implement and explain one bounded feature",
+            expected=2,
+        )
+        self.assertIn("confirmation", denied_task["error"])
+        created = self.run_cli(
+            "create-task",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "mainline",
+            "--id",
+            "feature-auth",
+            "--stage",
+            "request-flow",
+            "--kind",
+            "implementation",
+            "--title",
+            "Implement auth middleware",
+            "--objective",
+            "Implement and explain one bounded feature",
+            "--criterion",
+            "Tests pass and learner explains the flow",
+            "--confirmation",
+            "User explicitly requested implementation mode for auth middleware.",
+        )
+        self.assertTrue(created["created"])
+        denied_stream = self.run_cli(
+            "open-workstream",
+            "--repo",
+            str(self.repo),
+            "--id",
+            "impl-auth",
+            "--kind",
+            "implementation",
+            "--title",
+            "Auth implementation",
+            "--task",
+            "feature-auth",
+            expected=2,
+        )
+        self.assertIn("confirmation", denied_stream["error"])
+        opened = self.run_cli(
+            "open-workstream",
+            "--repo",
+            str(self.repo),
+            "--id",
+            "impl-auth",
+            "--kind",
+            "implementation",
+            "--title",
+            "Auth implementation",
+            "--task",
+            "feature-auth",
+            "--confirmation",
+            "User explicitly opened an implementation window.",
+        )
+        self.assertEqual("feature-auth", opened["attached_task_id"])
+        denied_pair = self.run_cli(
+            "open-workstream",
+            "--repo",
+            str(self.repo),
+            "--id",
+            "pair-auth",
+            "--kind",
+            "pair",
+            "--title",
+            "Auth pairing",
+            "--task",
+            "feature-auth",
+            expected=2,
+        )
+        self.assertIn("explicit user confirmation", denied_pair["error"])
+        denied_mode = self.run_cli(
+            "set-mode",
+            "--repo",
+            str(self.repo),
+            "--mode",
+            "implementation",
+            expected=2,
+        )
+        self.assertIn("explicit user confirmation", denied_mode["error"])
+        mode = self.run_cli(
+            "set-mode",
+            "--repo",
+            str(self.repo),
+            "--mode",
+            "implementation",
+            "--confirmation",
+            "User explicitly requested implementation mode.",
+        )
+        self.assertEqual("implementation", mode["mode"])
+
+    def test_context_packet_is_scoped_to_one_workstream(self) -> None:
+        self.initialize()
+        self.open_qa()
+        output = self.run_cli(
+            "context",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "qa-http",
+        )
+        self.assertEqual("qa-http", output["workstream"]["id"])
+        self.assertEqual(
+            "request-flow-chapter", output["attached_task"]["id"]
+        )
+        self.assertEqual("mainline", output["other_workstreams"][0]["id"])
+
+    def test_session_close_writes_per_workstream_log_and_handoff(self) -> None:
+        self.initialize()
+        self.open_qa()
+        session = self.inputs / "session.json"
+        session.write_text(
+            json.dumps(
+                {
+                    "title": "Middleware Q&A",
+                    "goal": "Resolve ordering",
+                    "completed": ["Read route registration"],
+                    "core_files": ["internal/http/routes.go"],
+                    "key_insights": ["Ordering follows registration"],
+                    "exercises": [],
+                    "open_questions": ["How are nested groups ordered?"],
+                    "next_step": "Read framework middleware tests",
+                    "resume_at": "Nested route group behavior",
+                }
+            ),
+            encoding="utf-8",
+        )
+        output = self.run_cli(
+            "record-session",
+            "--repo",
+            str(self.repo),
+            "--workstream",
+            "qa-http",
+            "--session",
+            str(session),
+        )
+        self.assertIn("sessions", output["path"])
+        log = Path(output["path"]).read_text(encoding="utf-8")
+        self.assertIn("Workstream: `qa-http`", log)
+        handoff = Path(output["handoff"]).read_text(encoding="utf-8")
+        self.assertIn("Nested route group behavior", handoff)
+
+    def test_custom_notes_missing_path_falls_back_without_mutating_on_failure(
+        self,
+    ) -> None:
+        self.propose()
+        missing = self.root / "missing-vault"
+        output = self.run_cli(
+            "set-notes",
+            "--repo",
+            str(self.repo),
+            "--location",
+            "custom",
+            "--path",
+            str(missing),
+            "--fallback",
         )
         self.assertTrue(output["fallback_used"])
-        self.assertIn("does not exist", output["reason"])
+        config_path = self.repo / ".learning" / "config.json"
+        before = config_path.read_text(encoding="utf-8")
+        denied = self.run_cli(
+            "set-notes",
+            "--repo",
+            str(self.repo),
+            "--location",
+            "custom",
+            "--path",
+            str(self.root / "another-missing"),
+            "--no-fallback",
+            expected=2,
+        )
+        self.assertIn("does not exist", denied["error"])
+        self.assertEqual(before, config_path.read_text(encoding="utf-8"))
 
-    def test_existing_config_is_preserved_when_saving_first_proposal(self) -> None:
+    def test_doctor_validates_multi_workstream_state(self) -> None:
+        self.initialize()
+        self.open_qa()
+        result = self.run_cli("doctor", "--repo", str(self.repo))
+        self.assertTrue(result["ok"])
+        self.assertEqual(2, result["schema_version"])
+
+    def test_project_lock_rejects_overlapping_mutations_without_deleting_lock(
+        self,
+    ) -> None:
+        with STATE_MODULE.state_lock(
+            self.repo, "first-writer", timeout_seconds=0.1
+        ):
+            with self.assertRaises(STATE_MODULE.StateError):
+                with STATE_MODULE.state_lock(
+                    self.repo, "second-writer", timeout_seconds=0.1
+                ):
+                    self.fail("overlapping lock unexpectedly succeeded")
+            self.assertTrue(
+                (self.repo / ".learning" / ".state.lock").exists()
+            )
+        self.assertFalse((self.repo / ".learning" / ".state.lock").exists())
+
+    def test_migrate_v1_archives_and_splits_progress(self) -> None:
         state = self.repo / ".learning"
         state.mkdir()
         config = {
             "schema_version": 1,
-            "learning": {"mode": "mentor", "explanation_depth": "deep", "exercise_enabled": False, "review_enabled": True},
-            "permissions": {"allow_test_skeletons": False, "allow_business_code_changes": False},
-            "planning": {"require_confirmation": True, "auto_activate_plan": False},
-            "notes": {"enabled": False, "location": "project", "project_path": ".learning/notes", "custom_path": None, "fallback_to_project": True, "namespace_by_project": False, "session_logs": False, "update_existing_notes": True, "git_tracking": "ask", "categories": {}},
-            "progress": {"enabled": True, "mastery_requires_evidence": True},
-            "project": {"focus": ["HTTP"], "excluded_topics": ["database"]},
+            "learning": {
+                "mode": "mentor",
+                "explanation_depth": "normal",
+                "exercise_enabled": True,
+                "review_enabled": True,
+            },
+            "permissions": {
+                "allow_test_skeletons": False,
+                "allow_business_code_changes": False,
+            },
+            "planning": {
+                "require_confirmation": True,
+                "auto_activate_plan": False,
+            },
+            "notes": {
+                "enabled": True,
+                "location": "project",
+                "project_path": ".learning/notes",
+                "custom_path": None,
+                "fallback_to_project": True,
+                "namespace_by_project": False,
+                "session_logs": True,
+                "update_existing_notes": True,
+                "git_tracking": "ask",
+                "categories": {},
+            },
+            "progress": {
+                "enabled": True,
+                "mastery_requires_evidence": True,
+            },
+            "project": {"focus": [], "excluded_topics": []},
         }
-        (state / "config.json").write_text(json.dumps(config), encoding="utf-8")
-        self.propose()
-        saved = json.loads((state / "config.json").read_text(encoding="utf-8"))
-        self.assertFalse(saved["learning"]["exercise_enabled"])
-        self.assertEqual(["HTTP"], saved["project"]["focus"])
-
-    def test_failed_custom_notes_configuration_does_not_mutate_config(self) -> None:
-        self.propose()
-        config_path = self.repo / ".learning" / "config.json"
-        before = config_path.read_text(encoding="utf-8")
-        missing = Path(self.temp.name) / "missing-no-fallback"
-        self.run_cli(
-            "set-notes", "--repo", str(self.repo), "--location", "custom",
-            "--path", str(missing), "--no-fallback", expected=2,
+        project = {"schema_version": 1, "name": "legacy"}
+        plan = json.loads(self.plan.read_text(encoding="utf-8"))
+        plan["schema_version"] = 1
+        plan["status"] = "active"
+        progress = {
+            "schema_version": 1,
+            "plan_version": 1,
+            "current_stage_id": "request-flow",
+            "current_task_id": "request-flow-task-01",
+            "current_code_locations": ["internal/http/routes.go"],
+            "task_order": ["request-flow-task-01"],
+            "tasks": {
+                "request-flow-task-01": {
+                    "stage_id": "request-flow",
+                    "title": "Request lifecycle",
+                    "objective": "Trace a request",
+                    "source_scope": ["internal/http"],
+                    "prerequisites": [],
+                    "completion_criteria": ["Explain it"],
+                    "status": "learning",
+                    "evidence": [],
+                    "open_questions": [],
+                    "blockers": [],
+                    "next_step": "Trace middleware",
+                }
+            },
+            "next_step": "Trace middleware",
+        }
+        for name, value in (
+            ("config.json", config),
+            ("project.json", project),
+            ("plan.json", plan),
+            ("progress.json", progress),
+        ):
+            (state / name).write_text(json.dumps(value), encoding="utf-8")
+        output = self.run_cli("migrate-v1", "--repo", str(self.repo))
+        self.assertTrue(output["migrated"])
+        self.assertTrue(Path(output["archive"]).exists())
+        self.assertFalse((state / "progress.json").exists())
+        self.assertTrue((state / "legacy" / "progress-v1.json").exists())
+        self.assertTrue(
+            (state / "tasks" / "request-flow-task-01.json").exists()
         )
-        self.assertEqual(before, config_path.read_text(encoding="utf-8"))
+        doctor = self.run_cli("doctor", "--repo", str(self.repo))
+        self.assertTrue(doctor["ok"])
 
 
 if __name__ == "__main__":

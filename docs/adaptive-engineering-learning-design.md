@@ -1,74 +1,166 @@
-# 自适应工程学习 Skill：诊断与架构
+# 自适应工程学习 Skill：诊断与架构取舍
 
-## 原 Prompt 诊断
-
-### 应保留
+## 原始学习 Prompt 中应保留的部分
 
 - 以“为什么、替代方案和 trade-off”为教学核心。
 - 默认不代写核心业务代码，强调工程判断和生产级边界。
 - 主动识别过度抽象、假微服务、无意义 interface 和不合理分层。
-- Review、Debug、技术选型和可维护性意识应进入长期工作流。
-- AI 工程内容保留为条件性方向，只有仓库真实涉及才进入学习地图。
+- Review、Debug、技术选型和可维护性意识进入长期工作流。
+- AI 工程等方向只有在仓库真实涉及时才进入学习地图。
+- 学习计划必须适配项目，而不是固定 Phase 1–6。
 
-### 重复与过度绝对
+## 需要收敛的部分
 
-- “不要代写”“解释为什么”“避免过度设计”在多个章节重复，适合在主 Skill 中各保留一条硬边界。
-- 固定 Phase 1–6 更像从零开发流程，不适合所有克隆仓库；替换为按意图路由的发现、计划、教学、问答、练习、Review、Debug 和状态工作流。
-- “经常反问”容易制造审问式交互；替换为只有在需要掌握证据或关键判断时提出一个高价值问题。
-- “每次重要交互后必须自动生成笔记”和“最后生成学习笔记”会产生噪声；替换为先判断稳定性、验证程度和复用价值。
-- “不要直接给修复代码”对 Debug 过于绝对；在用户明确切换结对/代实现模式后可以修复，但必须先建立证据链。
-- “工业界通常如何处理”容易假装存在唯一标准；应结合规模、约束和当前项目说明多种可行做法。
+- “不要代写”“解释为什么”“避免过度设计”重复出现时，只保留核心硬边界。
+- “经常反问”容易制造审问式体验，改为只在需要掌握证据时提出高价值问题。
+- “每次重要交互都写笔记”会造成文件爆炸，改为价值判断后再沉淀。
+- Debug 不能永远禁止修复；证据成立且用户进入 pair/implementation 后可以实现。
+- “工业界通常如何处理”不应暗示唯一标准，应结合规模和约束讨论。
 
-### 规则归属
+## v1 的正确基础
 
-| 内容 | 归属 | 原因 |
-| --- | --- | --- |
-| 本仓库的源目录、同步方式、验证命令 | `AGENTS.md` | 仓库维护约定，自动应用于本项目 |
-| 意图路由、确认门、最小动作、模式边界 | `SKILL.md` | 每次运行都必须遵守的核心流程 |
-| 发现、教学、Debug、笔记细则 | `references/` | 按需加载，避免主 Skill 膨胀 |
-| 用户偏好、权限、笔记路径 | `.learning/config.json` | 项目/用户可变配置 |
-| 计划生命周期与执行状态 | `plan.json` / `progress.json` | 需要可靠持久化且避免重复来源 |
-| 概念、Debug、Session 结构 | `assets/templates` / `assets/examples` | 可复制产物，不占主指令上下文 |
-
-### 主要失效模式及应对
-
-- 依赖文件出现某技术就强行开课：要求给出实际调用位置和学习价值证据。
-- 自动计划直接变正式课程：`proposed` 与 `active` 状态分离，脚本要求非空确认记录。
-- 读过一次就标为掌握：`mastered` 默认必须有学习者证据。
-- 重新扫描覆盖正式计划：扫描只更新项目事实并输出差异，计划另行确认。
-- 状态散落在多份 Markdown：计划和进度分别有单一 JSON 真源。
-- 自动笔记造成文件爆炸：不预建分类目录，先搜索后合并，只记稳定高价值内容。
-- 外部 Vault 写入被误报：路径解析显式返回 fallback 和原因，不创建缺失的外部路径。
-- 将 Skill 拆成虚构的嵌套系统：使用一个主 Skill 和按需参考文件；不依赖 Skill-to-Skill 调用。
-- 把当前仓库代码当标准答案：学习地图必须标注 positive/mixed/negative/unverified。
-
-## 最小可用架构
+第一版采用：
 
 ```text
-用户自然语言
-  -> 主 Skill 意图路由与安全边界
-     -> discovery-and-planning（首次扫描、地图、候选计划、确认）
-     -> learning-workflows（教学、问答、练习、Review、Debug）
-     -> state-model（状态职责与不变量）
-     -> notes-and-operations（笔记、Session、路径、迁移）
-  -> learning_state.py（原子状态转换与校验）
-  -> 目标仓库 .learning/（项目状态与 Markdown 笔记）
+一个主 SKILL.md
++ 按需 references
++ 标准库 Python 状态脚本
++ 项目内 .learning/
 ```
 
-采用单主 Skill 而不是多个子 Skill，原因是当前 Codex 通过描述匹配或显式 `$skill` 选择 Skill；官方格式没有提供可依赖的“主 Skill 直接调用子 Skill”编排 API。参考文件能实现渐进加载，脚本负责易出错的状态转换。
+这是正确方向，因为：
 
-## 持久化取舍
+- 不依赖不存在的 Skill-to-Skill 编排协议。
+- 主 SKILL 保持精简。
+- JSON 状态可校验和原子更新。
+- Markdown 知识适合人工维护。
+- `proposed` / `active` 确认门和 mastery evidence 可以确定性执行。
 
-- 配置和状态使用 JSON：Python 标准库可跨平台可靠解析、验证和原子写入，不依赖 PyYAML；代价是不能写注释。
-- 知识和 Session 使用 Markdown：兼容普通编辑器与 Obsidian，Git diff 清晰。
-- 默认目录使用 `.learning/`：把学习状态从产品文档中分离，并减少业务目录噪声；代价是隐藏目录不易被文件浏览器注意，因此使用说明必须给出查看方式。
-- 不自动修改 `.gitignore`：团队是否跟踪学习资料是仓库策略，默认 `git_tracking: ask`。
+## v1 的限制
 
-## Codex 能力边界
+v1 把所有运行进度放在一个 `progress.json`：
 
-- Skill 是按交互触发的工作流，不是后台常驻服务。
-- 新增或更新 Skill 通常会自动发现；未显示时需要重启 Codex。
-- 项目级发现位置是从当前目录到仓库根的 `.agents/skills`。
-- 外部 Obsidian 写入仍受当前文件系统权限和沙箱审批约束。
-- 主 Skill 能读取捆绑参考和运行脚本，但不把嵌套 Skill 调用当稳定编排能力。
-- 代码库教学质量依赖仓库可访问性、可运行工具和证据完整度；失败必须如实记录。
+```text
+current_task_id
+current_code_locations
+tasks
+questions
+blockers
+next_step
+```
+
+当学习仅在一个窗口顺序推进时，这很简单。但用户实际场景包含：
+
+- 主线学习窗口
+- 临时或长期 Q&A 窗口
+- 不同章节并行学习
+- 练习、Review、Debug 分开
+- 一个或多个功能实现窗口
+
+这些窗口共享一个 `current_task_id` 会互相争夺“当前”，共享一份 task map 会扩大写冲突；仅靠 `os.replace` 无法防止语义覆盖。
+
+## v2 的核心重构
+
+### 1. Task / Workstream 分离
+
+```text
+task       = 要学/要做什么
+workstream = 哪个 Codex 窗口在做
+```
+
+这使同一章节可以被多个窗口引用，又不会把窗口完成误判为学习掌握。
+
+### 2. 拆分写入所有权
+
+```text
+tasks/<id>.json
+workstreams/<id>.json
+inbox/<id>.json
+workspace.json
+shared.json
+```
+
+每个窗口默认只更新自己的 workstream；task 更新受角色和 attachment 限制。
+
+### 3. Append-only Inbox
+
+侧线不直接写共享真源，而是发布独立 contribution：
+
+```text
+publish
+→ inbox/<unique-id>.json
+→ sync
+→ shared/task
+```
+
+这样可以：
+
+- 降低两个窗口写同一文件的概率
+- 对贡献进行类型校验
+- 为计划变更设置单独确认门
+- 保留来源、任务和 workstream
+
+### 4. 项目级互斥锁
+
+所有变更命令通过 `.state.lock` 串行化，并在锁内重新读取状态。脚本拒绝自动删除锁，避免误伤仍在写入的 Codex 任务。
+
+### 5. Markdown 恢复界面
+
+用户要求跨任务快速恢复，因此由脚本生成：
+
+- `dashboard.md`
+- `handoffs/<workstream>.md`
+- `sessions/<workstream>/*.md`
+
+它们不承担权威状态，避免 JSON/Markdown 双真源。
+
+### 6. 更严格的 mastery
+
+v1 要求 evidence；v2 默认进一步要求至少一条 `learner_originated` evidence。Codex 的讲解和实现不会再被误判为学习者掌握。
+
+### 7. 可恢复迁移
+
+`migrate-v1` 先完整归档，再拆分状态，并保留旧进度副本。迁移不推断新证据。
+
+## 规则归属
+
+| 内容 | 归属 |
+| --- | --- |
+| 意图路由、确认门、最小动作、模式边界 | `SKILL.md` |
+| 发现/计划 | `references/discovery-and-planning.md` |
+| 教学/问答/练习/Review/Debug | `references/learning-workflows.md` |
+| 多窗口权限、发布、同步、交接 | `references/multi-workstream-coordination.md` |
+| Schema、所有权、不变量、迁移 | `references/state-model.md` |
+| 笔记、Session、路径和恢复 | `references/notes-and-operations.md` |
+| 用户命令示例 | `references/usage.md` |
+| 确定性写入和校验 | `scripts/learning_state.py` |
+| 人类可维护知识 | `.learning/notes/` |
+
+## 主要失效模式及应对
+
+| 失效模式 | 应对 |
+| --- | --- |
+| 依赖出现某技术就强行开课 | 要求真实调用位置和学习价值证据 |
+| 自动计划直接变正式课程 | `proposed` / `active` 分离 |
+| 读过一次就 mastered | evidence + learner origin |
+| 重新扫描覆盖正式计划 | 只更新项目事实，计划另行确认 |
+| Q&A 改掉主线进度 | Q&A 禁止直接更新 task status |
+| 两个窗口覆盖 current task | task/workstream 分离 |
+| 侧线直接改共享真源 | append-only inbox + sync |
+| 计划建议自动生效 | plan change 永远 queued |
+| Markdown 与 JSON 不一致 | Dashboard/Handoff 明确为派生视图 |
+| 崩溃后随意删锁 | 超时报告 metadata，不自动删除 |
+| 自动笔记造成文件爆炸 | 先判断稳定性、验证和复用价值 |
+| 外部 Vault 写入误报 | 显式 resolve/fallback 原因 |
+
+## 为什么不引入数据库或第三方依赖
+
+目标项目可能运行在 Windows、macOS、Linux，也可能没有 Python 包管理环境。使用标准库 JSON、原子替换、独占锁文件和分文件所有权，可以在不污染目标项目的前提下覆盖主要协作场景。
+
+代价是：
+
+- 不提供数据库级多文件事务
+- 不提供跨设备实时同步
+- 复杂手工冲突仍需人工恢复
+
+对于个人项目制学习，这个取舍比引入常驻服务或数据库更合适。

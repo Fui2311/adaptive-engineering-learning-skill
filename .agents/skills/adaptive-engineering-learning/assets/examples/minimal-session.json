@@ -17,5 +17,6 @@
   "open_questions": [
     "事务的所有权在哪里决定？"
   ],
+  "resume_at": "internal/repository/user_repository.go 中的事务入口",
   "next_step": "继续跟踪 Repository 调用与错误映射。"
 }

@@ -12,7 +12,7 @@
 
 Run `inspect` before a first scan. Check `AGENTS.md`, repository-local skills, `.learning/`, other learning/config files, Markdown/Obsidian notes, session history, branch/HEAD, and uncommitted changes. Read existing state rather than initializing again.
 
-If a plan is active, do not replace it during a re-scan. Produce a change report and ask whether to preserve, revise, pause, or supersede it. If the user asks only a question, answer it without re-scanning unless the necessary code context is stale.
+If a plan is active, do not replace it during a re-scan. Read `workspace.json`, active task files, workstreams, and the shared plan-change queue. Produce a change report and ask whether to preserve, revise, pause, or supersede the route. If the user asks only a question, use or open a Q&A workstream without re-scanning unless the necessary code context is stale.
 
 ## Repository scan
 
@@ -66,13 +66,13 @@ Create 3–7 coherent stages unless repository scope strongly requires otherwise
 - completion criteria based on observable learner behavior
 - skip and extension options
 
-Do not generate dozens of microtasks. Keep exercises optional when disabled. Save a proposal only when persistence is useful:
+Do not generate dozens of microtasks or pre-create side workstreams. Keep exercises optional when disabled. Save a proposal only when persistence is useful:
 
 ```text
 python <skill-dir>/scripts/learning_state.py propose --repo <repo> --project <project.json> --plan <plan.json> [--map <project-map.md>] [--config <config.json>]
 ```
 
-The input plan must use the schema in `state-model.md`. `propose` refuses to overwrite an active plan and never creates progress.
+The input plan must use the schema in `state-model.md`. `propose` refuses to overwrite an active plan and never creates workspace, task, or workstream runtime state.
 
 End with a concise confirmation request that makes these adjustments easy: accept, remove/reorder stages, change depth, select one direction, disable exercises, focus on framework rather than business, or re-scan a module.
 
@@ -83,6 +83,6 @@ When the user confirms with changes:
 1. Edit a copy of the proposal to reflect their exact changes.
 2. Run `revise-plan` with a reason while it is still proposed.
 3. Run `activate` with the user's confirmation summary.
-4. Name only the first current task and offer to start; do not teach the whole stage immediately.
+4. Read the generated `mainline` context and name only the first current task; do not teach the whole stage immediately.
 
-On a later re-scan, compare the previous `project.json.scan.git_head` and relevant repository facts. Report new learning content, invalidated assumptions, affected stages, and suggested revisions. Never auto-activate a revised route.
+On a later re-scan, compare the previous `project.json.scan.git_head` and relevant repository facts. Report new learning content, invalidated assumptions, affected stages/tasks/workstreams, and suggested revisions. Publish or record a plan-change request when useful, but never auto-apply or auto-activate a revised route.

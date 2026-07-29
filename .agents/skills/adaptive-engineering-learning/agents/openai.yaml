@@ -1,6 +1,6 @@
 interface:
   display_name: "自适应工程学习"
-  short_description: "基于真实代码库规划、推进并记录可恢复的工程学习流程"
-  default_prompt: "使用 $adaptive-engineering-learning 分析当前仓库并提出候选学习计划，但不要直接激活计划。"
+  short_description: "基于真实代码库运行可恢复、可分窗口协作的工程学习系统"
+  default_prompt: "使用 $adaptive-engineering-learning 检查当前项目的学习状态；若尚未规划则先提出候选路线，若已有路线则从主线 workstream 继续。"
 policy:
   allow_implicit_invocation: true
