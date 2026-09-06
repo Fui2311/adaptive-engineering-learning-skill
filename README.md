@@ -64,6 +64,7 @@ Skill 允许自动发现；是否被选中由宿主决定。由 Skill 创建的�
 
 ## 文档与验证
 
+- [中文使用说明书](docs/user-guide.md)：工作原理、完整操作示例、记录位置与常见问题。
 - [详细使用与任务衔接](skill-src/adaptive-engineering-learning/references/usage.md)
 - [项目介绍](INTRODUCTION.md)
 - [状态设计](docs/state-design-principles.md)
