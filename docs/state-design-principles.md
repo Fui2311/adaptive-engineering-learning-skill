@@ -1,5 +1,13 @@
 # 状态设计原理
 
+## 日常入口与问答快照
+
+日常交互使用只读 `resume`，不用每次重跑扫描。新增的 `questions/<id>.json` 保存提问当时的源码位置、相关讲解、源任务断点和源项目路径，`<id>.md` 是可读视图，`<id>-answer.md` 是答案。主线后来推进不会改写这份历史语境。
+
+workstream 可以增加 `recent_explanation` 和 `thread: {id, host}`，分别保存相关讲解和已确认的宿主任务绑定；这些都不是掌握证据。新字段可选，既有 v2 项目不需要迁移。`prepare-qa` 只注册必要问答窗口，不改写主线或正在使用的问答断点；详细规则见 [问答衔接](../skill-src/adaptive-engineering-learning/references/question-handoff.md)。
+
+下文描述底层协议；用户日常只需要区分主线与问答，不必维护这些字段。
+
 状态设计的目标不是保存更多文件，而是让多个 Codex 任务窗口可以围绕同一个项目学习，同时不混淆：
 
 ```text

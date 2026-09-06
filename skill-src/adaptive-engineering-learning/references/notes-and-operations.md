@@ -13,7 +13,7 @@
 
 Before writing, search `notes-index.json`, the effective note root, and likely headings. Record only verified, durable material: an important call flow, framework mechanism, reusable debug method, meaningful review, trade-off, corrected misconception, or persistent knowledge gap.
 
-Do not create a stable note for simple syntax, temporary paths, guesses, repeated Q&A, one-off operations, task status, or workstream resume state. Prefer updating a related file over creating a micro-note.
+Simple syntax is eligible when it resolves a persistent gap or is useful for later review. Do not create stable notes for temporary paths, guesses, duplicate Q&A, one-off operations, task status or resume state. Prefer updating a related file over creating a micro-note. The per-question context/answer archive described in question-handoff.md is separate from stable knowledge notes.
 
 Cross-window sharing and stable notes serve different purposes:
 

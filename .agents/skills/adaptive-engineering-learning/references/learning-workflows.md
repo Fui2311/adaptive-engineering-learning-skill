@@ -1,88 +1,37 @@
 # Learning workflows
 
-## Contents
+Intent and persistence defaults live in SKILL.md. Read only the relevant section here; ordinary QA is direct explanation, not an exercise.
 
-- Source teaching
-- Contextual Q&A
-- Exercises
-- Review
-- Debug
-- Pair and implementation
-- Progress evidence
+## Source teaching and Q&A
 
-## Source teaching
+Start with the user's confusion or the saved lesson goal. Explain the problem, trace a real entrypoint through the relevant call/data/failure path, then discuss responsibility and trade-offs. Teach missing prerequisites inline. Do not translate every file or require a learner answer before explaining an unfamiliar concept.
 
-Run `sync` and load `context` for the active workstream. Read its attached task, exact resume point, code locations, and relevant shared updates; do not re-scan an unchanged repository. Define one bounded goal for the session, then teach in this order when applicable:
+Load compact context once at entry and source files as needed. Do not scan the unchanged repository or run sync/context before every answer. Keep short syntax questions short. A question within the mainline can be answered without changing its role or checkpoint. If the user wants isolation, follow [question-handoff](question-handoff.md) to move context into a dedicated task.
 
-1. problem and system position
-2. entrypoint
-3. control/call flow
-4. data transformation
-5. module responsibilities
-6. design rationale and alternatives
-7. strengths, weaknesses, and current must-know details
-8. details safe to defer
-
-Prefer diagrams only when the relationship is otherwise hard to follow. Ask the learner to explain, trace, predict, or locate a key element when evidence is needed. Stop after a coherent unit, checkpoint the workstream, and update the task only when its status or evidence materially changed.
-
-## Contextual Q&A
-
-Use a `qa` workstream for a separate Q&A window; attach it to the relevant task when known. Answer from the current repository, stage, task, accepted shared context, and known prerequisites. Keep a narrow syntax question narrow. Explain responsibility and trade-offs for design questions. Then classify the result:
-
-- stable verified knowledge useful to another window: publish a sourced `answer` or `finding`; update a stable note only when it has long-term value
-- knowledge gap: publish a `question` or create a review item
-- temporary operational detail: do not persist
-- plan-changing concern: publish `plan_change`; never rewrite the route automatically
-
-Do not change task status from a Q&A workstream. Preserve the mainline resume location and checkpoint only the Q&A workstream.
+Save changed resume state at meaningful boundaries. Use `checkpoint --explanation` for a recent teaching passage needed for later questions, never as learner evidence. Mark uncertainty and source quality explicitly.
 
 ## Exercises
 
-Prefer, in order: explain existing code, complete a local TODO, add validation/query, write a test, fix a verified defect, bounded refactor, then a from-scratch demo.
+Only use an exercise when requested or accepted. Prefer explaining/tracing existing code, a bounded TODO, validation/test, verified defect fix, then a from-scratch demo.
 
-Every exercise specifies background, objective, files, allowed edit boundary, constraints, acceptance criteria, graded hints, and post-completion explanation questions. Create a separate exercise task only when it needs independent progress or a separate Codex window. Keep it feasible in one learning session. Do not reveal the core answer unless the user requests it or changes to pair/implementation mode.
+Give the objective, source/edit boundary and acceptance criteria; include constraints when material. Offer graded hints one at a time. Do not reveal the core answer until requested. Avoid mandatory eight-field forms for small exercises. An exercise only needs a separate task when it has independent progress; it does not require a separate Codex window.
 
-## Review
+## Review and debug
 
-Attach the review workstream to the task that produced the code. Review the learner's implementation without overwriting it by default. Classify findings as:
+For learner code, classify correctness defects, required engineering fixes, optional improvements and details safe to defer. Explain impact at concrete code locations; let the learner fix issues unless they request implementation.
 
-- functional/correctness defect
-- required engineering fix
-- recommended improvement
-- style-only issue
-- defer at the current learning stage
-- over-refactoring to avoid
-
-Use concrete paths/lines and explain impact. Ask the learner to attempt important fixes first when in mentor/review mode. Publish durable findings or blockers when another workstream needs them. Codex-written fixes are not learner evidence.
-
-## Debug
-
-Follow this evidence loop:
-
-```text
-symptom -> reproduction -> evidence -> hypotheses -> probability/cost order
--> validation experiment -> narrowed scope -> root cause -> fix -> verification
-```
-
-Do not patch from an unverified guess. Checkpoint the hypothesis/evidence boundary so another window can resume precisely. Preserve commands, logs, and results accurately. Publish the verified root cause or blocker. Record a debug note only if the root cause and method are reusable.
+For debug, reproduce the symptom, collect evidence, test plausible hypotheses, identify the root cause and verify the authorized fix. Preserve the last verified finding and next experiment when blocked. Do not turn a guess into a root-cause claim.
 
 ## Pair and implementation
 
-Enter `pair` or `implementation` only after explicit user intent. Create an implementation task/workstream with a confirmation record when the work deserves independent scope. Keep source boundaries, acceptance criteria, and learning questions visible.
+The user's explicit request to implement or pair is authorization for the specified scope; record that intent instead of asking again. Keep business edit boundaries and acceptance criteria clear. Existing `pair`/`implementation` task/workstream commands require a non-empty confirmation record.
 
-Separate:
-
-- Codex-authored code and decisions
-- learner-authored changes
-- learner explanations or predictions
-- test/build verification
-
-Only learner-authored work plus learner explanations/predictions can support mastery. Completion of an implementation workstream never automatically masters its attached task.
+Distinguish Codex-authored changes, learner-authored work and test results. A passing assistant-written implementation does not prove learner mastery.
 
 ## Progress evidence
 
-Use `update-task --workstream <id>` for material transitions by the mainline or an attached non-Q&A workstream. Reading once may justify `learning`, not `mastered`. Valid evidence includes the learner explaining a flow in their own words, locating relevant code, completing a bounded change/test, detecting a common failure, or explaining a key trade-off.
+No forced quiz after routine teaching. Request a focused explanation, prediction or implementation only when assessing progress or when the learner asks for practice. Acknowledgement such as “懂了” alone is not evidence.
 
-Allowed task states are `not_started`, `learning`, `questioning`, `practicing`, `reviewing`, `blocked`, `needs_review`, `mastered`, `paused`, and `skipped`. `mastered` must include evidence when configured.
+Use `update-task` for material status/evidence changes by an owning non-QA workstream. Existing statuses remain supported: not_started, learning, questioning, practicing, reviewing, blocked, needs_review, mastered, paused, skipped. Do not expose this list as a user form.
 
-Pass `--learner-originated` only for evidence actually produced by the learner. A side workstream can publish learner evidence; synchronization adds it to the task without changing status, leaving the mastery decision deliberate.
+Use `--learner-originated` only for actual learner evidence. QA may publish evidence candidates, but cannot change task status. Synchronization never automatically masters a task or changes a route.

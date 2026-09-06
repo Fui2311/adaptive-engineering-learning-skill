@@ -728,5 +728,164 @@ class LearningStateScenarios(unittest.TestCase):
         self.assertTrue(doctor["ok"])
 
 
+    def state_bytes(self) -> dict[str, bytes]:
+        return {str(p.relative_to(self.repo)): p.read_bytes()
+                for p in (self.repo / ".learning").rglob("*") if p.is_file()}
+
+    def question_input(self, question: str = "为什么把 context 传下去？") -> Path:
+        path = self.inputs / "qa.json"
+        path.write_text(json.dumps({"question": question,
+            "context": "刚才讲到 handler 调用 service，再传到 repository；这段是原讲解。",
+            "confusion": "取消信号如何传播", "code_locations": ["internal/http/handler.go:42"],
+            "known": ["函数参数"], "unknown": ["驱动是否支持取消"]}, ensure_ascii=False), encoding="utf-8")
+        return path
+
+    def handoff(self, request_id: str = "q-context") -> dict:
+        return self.run_cli("prepare-qa", "--repo", str(self.repo), "--id", request_id,
+                            "--packet", str(self.question_input()))
+
+    def test_resume_fresh_question_does_not_initialize(self) -> None:
+        output = self.run_cli("resume", "--repo", str(self.repo), "--intent", "qa")
+        self.assertEqual("answer", output["action"])
+        self.assertFalse((self.repo / ".learning").exists())
+        self.assertEqual("discover", self.run_cli("resume", "--repo", str(self.repo))["action"])
+        self.assertFalse((self.repo / ".learning").exists())
+
+    def test_resume_proposal_answers_without_activation(self) -> None:
+        self.propose()
+        before = self.state_bytes()
+        self.assertEqual("answer", self.run_cli("resume", "--repo", str(self.repo), "--intent", "qa")["action"])
+        self.assertEqual("confirm_plan", self.run_cli("resume", "--repo", str(self.repo))["action"])
+        self.assertEqual(before, self.state_bytes())
+
+    def test_resume_existing_route_reads_without_scan_or_writes(self) -> None:
+        self.propose()
+        self.activate()
+        self.run_cli("checkpoint", "--repo", str(self.repo), "--workstream", "mainline",
+                     "--resume-at", "handler.go:42", "--explanation", "解释请求取消")
+        before = self.state_bytes()
+        restored = self.run_cli("resume", "--repo", str(self.repo))
+        self.assertEqual("handler.go:42", restored["workstream"]["resume_at"])
+        self.assertEqual(before, self.state_bytes())
+        self.assertEqual("status", self.run_cli("resume", "--repo", str(self.repo), "--intent", "status")["action"])
+
+    def test_qa_packet_freezes_context_without_moving_mainline(self) -> None:
+        self.propose()
+        self.activate()
+        self.run_cli("checkpoint", "--repo", str(self.repo), "--workstream", "mainline",
+                     "--resume-at", "handler.go:42", "--explanation", "原始讲解")
+        protected = [self.repo / ".learning" / "plan.json",
+                     self.repo / ".learning" / "workstreams" / "mainline.json",
+                     *list((self.repo / ".learning" / "tasks").glob("*.json"))]
+        before = {str(p): p.read_bytes() for p in protected}
+        output = self.handoff()
+        packet_path = Path(output["packet_path"])
+        packet = json.loads(packet_path.read_text(encoding="utf-8"))
+        self.assertEqual("原始讲解", packet["source_context"]["workstream"]["recent_explanation"])
+        self.assertIn("原讲解", packet["input"]["context"])
+        self.assertIn(str(self.repo), output["prompt"])
+        self.assertIn(str(packet_path), output["prompt"])
+        self.assertIn("$adaptive-engineering-learning", output["prompt"])
+        self.assertEqual(before, {str(p): p.read_bytes() for p in protected})
+        snapshot = packet_path.read_bytes()
+        self.run_cli("checkpoint", "--repo", str(self.repo), "--workstream", "mainline",
+                     "--resume-at", "database.go:100", "--explanation", "后来讲解")
+        self.assertEqual(snapshot, packet_path.read_bytes())
+        qa = self.run_cli("resume", "--repo", str(self.repo), "--workstream", output["workstream_id"], "--intent", "qa")
+        self.assertEqual("answer", qa["action"])
+        self.assertNotEqual("mainline", qa["workstream"]["id"])
+        self.assertTrue(self.run_cli("doctor", "--repo", str(self.repo))["ok"])
+
+    def test_handoff_retry_and_related_question_keep_qa_checkpoint(self) -> None:
+        self.propose()
+        self.activate()
+        first = self.handoff()
+        self.run_cli("checkpoint", "--repo", str(self.repo), "--workstream", first["workstream_id"],
+                     "--resume-at", "解释取消信号中")
+        before = self.state_bytes()
+        self.assertEqual(first, self.handoff())
+        self.assertEqual(before, self.state_bytes())
+        other = self.handoff("q-follow-up")
+        self.assertEqual(first["workstream_id"], other["workstream_id"])
+        ws = self.run_cli("context", "--repo", str(self.repo), "--workstream", first["workstream_id"])["workstream"]
+        self.assertEqual("解释取消信号中", ws["resume_at"])
+
+    def test_handoff_rejects_id_collision_and_wrong_owner_without_mutation(self) -> None:
+        self.propose()
+        self.activate()
+        self.handoff()
+        before = self.state_bytes()
+        self.run_cli("prepare-qa", "--repo", str(self.repo), "--id", "q-context",
+                     "--packet", str(self.question_input("另一个问题")), expected=2)
+        self.run_cli("prepare-qa", "--repo", str(self.repo), "--id", "q-wrong-owner",
+                     "--workstream", "mainline", "--packet", str(self.question_input()), expected=2)
+        self.assertEqual(before, self.state_bytes())
+
+    def test_thread_binding_restores_qa_and_rejects_overwrite(self) -> None:
+        self.propose()
+        self.activate()
+        first = self.handoff()
+        ws_id = first["workstream_id"]
+        self.run_cli("bind-thread", "--repo", str(self.repo), "--workstream", ws_id, "--thread", "actual-tool-id")
+        before = self.state_bytes()
+        self.assertFalse(self.run_cli("bind-thread", "--repo", str(self.repo), "--workstream", ws_id,
+                                      "--thread", "actual-tool-id")["changed"])
+        restored = self.run_cli("resume", "--repo", str(self.repo), "--thread", "actual-tool-id")
+        self.assertEqual(ws_id, restored["workstream"]["id"])
+        self.assertEqual("answer", restored["action"])
+        self.run_cli("bind-thread", "--repo", str(self.repo), "--workstream", ws_id, "--thread", "another-id", expected=2)
+        self.run_cli("bind-thread", "--repo", str(self.repo), "--workstream", "mainline", "--thread", "actual-tool-id", expected=2)
+        self.assertEqual(before, self.state_bytes())
+        self.assertEqual("actual-tool-id", self.handoff()["thread"]["id"])
+
+    def test_unbound_qa_does_not_guess_latest_window(self) -> None:
+        self.propose()
+        self.activate()
+        self.handoff()
+        output = self.run_cli("resume", "--repo", str(self.repo), "--intent", "qa")
+        self.assertEqual("select_qa_context", output["action"])
+        self.assertNotIn("workstream", output)
+
+    def test_handoff_from_other_cwd_keeps_full_source_context(self) -> None:
+        self.propose()
+        self.activate()
+        path = self.question_input()
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["context"] = "相关源码讲解。" * 4000 + "END-OF-RELEVANT-PASSAGE"
+        path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        other_checkout = self.root / "other-checkout"
+        other_checkout.mkdir()
+        result = subprocess.run([sys.executable, str(SCRIPT), "prepare-qa", "--repo", str(self.repo),
+                                 "--packet", str(path), "--id", "q-long-context"], cwd=other_checkout,
+                                capture_output=True, text=True, encoding="utf-8", check=False)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        receipt = json.loads(result.stdout)
+        packet = json.loads(Path(receipt["packet_path"]).read_text(encoding="utf-8"))
+        self.assertEqual(payload["context"], packet["input"]["context"])
+        self.assertEqual(str(self.repo.resolve()), packet["source_repo"])
+        self.assertFalse((other_checkout / ".learning").exists())
+
+    def test_handoff_does_not_create_runtime_before_activation(self) -> None:
+        self.run_cli("prepare-qa", "--repo", str(self.repo), "--packet", str(self.question_input()), expected=2)
+        self.assertFalse((self.repo / ".learning").exists())
+        self.propose()
+        before = self.state_bytes()
+        self.run_cli("prepare-qa", "--repo", str(self.repo), "--packet", str(self.question_input()), expected=2)
+        self.assertEqual(before, self.state_bytes())
+
+    def test_unchanged_checkpoint_is_noop_and_explanation_is_not_evidence(self) -> None:
+        self.propose()
+        self.activate()
+        args = ("checkpoint", "--repo", str(self.repo), "--workstream", "mainline",
+                "--resume-at", "函数入口", "--explanation", "完整讲解段落")
+        self.run_cli(*args)
+        before = self.state_bytes()
+        self.assertFalse(self.run_cli(*args)["changed"])
+        self.assertEqual(before, self.state_bytes())
+        task = self.run_cli("context", "--repo", str(self.repo), "--workstream", "mainline")["attached_task"]
+        self.assertFalse(task["evidence"])
+        self.assertEqual("learning", task["status"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

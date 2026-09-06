@@ -1,133 +1,57 @@
 ---
 name: adaptive-engineering-learning
-description: Analyze a real software repository and run a confirmation-gated, resumable engineering learning system with project-specific curricula, source teaching, exercises, reviews, debugging, implementation labs, Markdown/Obsidian notes, and evidence-based progress. Use when the user wants to learn from a cloned project, discover worthwhile topics, plan or continue chapters, open separate Codex tasks/windows for mainline learning, Q&A, exercises, review, debug, or bounded feature implementation, share partial state across those tasks, inspect progress, migrate existing .learning state, or resume after interruption. Do not use for ordinary feature delivery unless the user frames it as learning or explicitly requests pair/implementation mode.
+description: Learn from a real code repository with a resumable route, direct explanations, exercises, and automatic notes. Use for project learning, continuing lessons, learning Q&A, or moving a question with its context into a separate task. Reuse existing .learning state; invoking this skill does not mean initialization. Ordinary feature delivery is outside scope unless explicitly requested as learning or pair work.
 ---
 
 # Adaptive Engineering Learning
 
-Build durable engineering understanding from the repository's real code. Treat repository evidence and `.learning/` files as authoritative; never depend on chat memory alone.
+Teach from real code; keep the mainline easy to follow and questions easy to revisit. The learner speaks naturally and never needs to manage workstream IDs or state commands.
 
-## Preserve the core contract
+## Recognize intent first
 
-- Discover before teaching in an unfamiliar repository.
-- Keep a generated proposal distinct from a user-confirmed route.
-- Require explicit confirmation before activation.
-- Require learner-originated evidence before marking a task `mastered`.
-- Judge repository quality; label flawed, obsolete, unused, or incidental code.
-- Do not modify business code outside explicit pair/implementation permission.
-- Keep Codex-authored work separate from learner mastery.
+Use the current request and conversation context, not the mere presence of this skill:
 
-## Route the smallest intent
+| Intent | Action |
+| --- | --- |
+| Learn a new project / plan a course | Inspect the repository, propose a tailored route, activate only after explicit confirmation. Read [discovery-and-planning](references/discovery-and-planning.md). |
+| Continue learning | Resume the conversation's saved role and exact code location. In an identified mainline, continue teaching without another mode-selection gate. |
+| Why / explain / I do not understand | Answer directly, fill missing prerequisites, preserve the mainline position. A short question needs neither a new task nor a course. |
+| Open a separate Q&A task / move this question out | Carry the question and relevant explanation automatically. Read [question-handoff](references/question-handoff.md); create or reuse the requested Q&A task. |
+| Exercise / review my attempt | Use a bounded exercise or review; graded hints apply to exercises. Read [learning-workflows](references/learning-workflows.md). |
+| Stop / progress / save | Save material changes and one next step; report compactly. |
 
-1. Run read-only inspection:
+Explicit user intent wins over a saved mode. In an identified Q&A conversation, “continue” continues that question. Only ask when the source, question, or intended continuation cannot be identified. Never invent missing context or create a Codex task merely because the user asked a question.
 
-   ```text
-   python <skill-dir>/scripts/learning_state.py inspect --repo <repo>
-   ```
+## Load only what is needed
 
-2. Read applicable `AGENTS.md`, relevant Git changes, and existing `.learning/` state.
-3. Choose only the matching workflow:
-   - new repository, stale scan, or route proposal: [references/discovery-and-planning.md](references/discovery-and-planning.md)
-   - teaching, Q&A, exercise, review, debug, pair, or implementation: [references/learning-workflows.md](references/learning-workflows.md)
-   - separate Codex tasks/windows or shared state: [references/multi-workstream-coordination.md](references/multi-workstream-coordination.md)
-   - schemas, ownership, validation, or migration: [references/state-model.md](references/state-model.md)
-   - notes, sessions, paths, archive, or recovery: [references/notes-and-operations.md](references/notes-and-operations.md)
-   - commands and user examples: [references/usage.md](references/usage.md) only when operational guidance is useful
-4. Execute one bounded learning action for the turn.
-
-## Establish or resume a workstream
-
-Treat a persistent learning `task` and a Codex conversation `workstream` as different:
-
-- A task is a chapter, exercise, review, debug investigation, Q&A objective, or implementation lab.
-- A workstream is one Codex task/window operating as `mainline`, `qa`, `exercise`, `review`, `debug`, `pair`, or `implementation`.
-
-After activation, use the built-in `mainline` workstream for curriculum progression. For a clearly named side window, create a stable lowercase ID such as `qa-auth`, `exercise-cache`, or `debug-timeout`:
+Resolve the actual source repository and applicable `AGENTS.md`. An incoming handoff's explicit source path takes precedence over a new task's incidental working directory. At entry or after context loss, use:
 
 ```text
-python <skill-dir>/scripts/learning_state.py open-workstream --repo <repo> --id <id> --kind <kind> --title "<title>" [--task <task-id>] [--focus "<scope>"]
+python <skill-dir>/scripts/learning_state.py resume --repo <repo> [--workstream <known-id>] [--thread <known-thread-id>] [--intent qa]
 ```
 
-Implementation workstreams and implementation tasks require a concise record of the user's explicit permission through `--confirmation`.
+`resume` reads state without initializing or scanning. Follow its action: `discover`, `confirm_plan`, `resume`, `answer`, `status`, `select_qa_context`, or `migration_required`. QA can answer before course activation. Prefer an exact incoming question packet or known thread binding; never guess the latest question from another window. Do not repeat entry checks on every message. Load relevant source files and, only if needed, pending shared updates with `sync`.
 
-At the start of an existing workstream:
+## Explain first
 
-```text
-python <skill-dir>/scripts/learning_state.py sync --repo <repo> --workstream <id>
-python <skill-dir>/scripts/learning_state.py context --repo <repo> --workstream <id>
-```
+Default to clear, direct teaching: the problem, a real call/data flow, and why the implementation makes those choices. Explain prerequisites instead of making the learner guess unfamiliar material. Cite paths and distinguish observed facts, inference, and unknowns; label flawed or obsolete code.
 
-If multiple workstreams exist and “continue” is ambiguous, resume `mainline` only when the request is clearly curricular; otherwise ask which workstream to resume.
+Do not force a quiz after every explanation. In exercises, give scope, acceptance criteria and incremental hints, one question at a time. For review/debug/pair work, use [learning-workflows](references/learning-workflows.md). Explicitly authorized implementation is allowed within scope; Codex-authored work is never learner mastery evidence.
 
-## Coordinate without overwriting other windows
+## Save without ceremony
 
-- Write only the current workstream's checkpoint and its attached task.
-- Use `checkpoint` to persist focus, code locations, resume point, blockers, and next step.
-- Use `publish` for durable cross-window questions, verified answers/findings, blockers, learner evidence, or plan-change requests.
-- Use `sync` to merge non-conflicting contributions into shared state.
-- Never auto-apply a plan-change contribution; leave it queued for confirmation.
-- Never let a Q&A workstream directly advance or master a learning task.
-- Treat `.learning/dashboard.md` and `.learning/handoffs/*.md` as generated human-readable snapshots; JSON remains the machine truth.
-- Regenerate the dashboard after manual recovery or when a snapshot is stale.
+- At a meaningful teaching boundary, checkpoint the current workstream's focus, exact resume point, code locations and next step. Include `--explanation` with the relevant passage to preserve referents such as “刚才这段”. This is context, not mastery evidence. Unchanged checkpoints need no write.
+- For separate Q&A, freeze a question packet before dispatch. Keep the detailed answer there; bring back only useful verified conclusions.
+- Automatically update useful, verified notes in the configured location, deduplicating by topic. Concise syntax explanations are eligible when useful for review. Read [notes-and-operations](references/notes-and-operations.md) when writing notes or closing a session. Mention actual updates briefly.
+- Save before ending a meaningful learning turn or switching tasks; do not wait for “save”. On “today stop”, keep one next step and a compact session log if enabled. No transcript dumps or obligatory status footers.
 
-Follow the full protocol in [references/multi-workstream-coordination.md](references/multi-workstream-coordination.md).
+Use `learning_state.py` for state mutations and `apply_patch` for note/answer prose. The usual path is one `resume` at entry, teaching or answering, then one changed `checkpoint`; extra commands serve actual handoff, evidence or note changes.
 
-## Enforce the confirmation gate
+## Keep these guarantees
 
-Maintain distinct concepts:
+- A proposed route is not active. Confirmation is needed to activate or change a route, not for ordinary explanations, saves or an already-authorized action.
+- Mark `mastered` only from learner-originated explanation, prediction, implementation or other demonstrated evidence. Reading or ending a session is insufficient.
+- Q&A preserves mainline progress; windows own separate checkpoints. Keep task evidence in tasks, shared findings in shared state, and knowledge in notes.
+- Retain schema v2 state and existing preferences. Do not reinitialize on skill invocation or mode change. For v1, corruption, locks or recovery, read [state-model](references/state-model.md) and run `doctor` as appropriate; migration needs approval and an archive.
 
-- proposal: `plan.json.status == "proposed"`
-- confirmed route: `plan.json.status == "active"` or later `paused`/`completed`
-- learning units: `.learning/tasks/*.json`
-- Codex windows: `.learning/workstreams/*.json`
-- durable shared contributions: `shared.json`
-- generated overview: `dashboard.md`
-
-During discovery, save at most configuration, project facts, project map, and a proposed plan. Do not create runtime tasks/workstreams or teach a long lesson.
-
-Activate only after explicit confirmation:
-
-```text
-python <skill-dir>/scripts/learning_state.py activate --repo <repo> --confirmation "<user-confirmed route or adjustment>"
-```
-
-Do not infer confirmation from silence, enthusiasm, or inspection of the proposal.
-
-## Ground every learning action
-
-- Cite repository paths and distinguish observed fact, inference, and unknown.
-- Prefer one complete control/data/failure thread over file-by-file translation.
-- Match depth and exercise difficulty to configuration, the attached task, and demonstrated prerequisites.
-- Ask for one high-value explanation, trace, prediction, or implementation decision when evidence is needed.
-- Keep detours in side workstreams unless the user confirms a route change.
-- Create a bounded task when a chapter needs a separate exercise, review, debug investigation, or feature lab; do not inflate the plan into dozens of microtasks.
-
-## Persist conservatively
-
-Use `scripts/learning_state.py` for lifecycle and coordination mutations. Use `apply_patch` for learner-facing Markdown notes so manual content remains visible in diffs.
-
-- Persist only material state changes.
-- Checkpoint before ending or switching windows.
-- Publish only durable cross-window information.
-- Search notes before writing; record verified, reusable knowledge rather than every answer.
-- On “today stop,” write one compact workstream session log when enabled and preserve one next step.
-- Run `doctor` after migration, recovery, conflicting manual edits, or failed writes.
-
-## Respect modes
-
-- `mentor`: explain and guide; do not supply the core business answer by default.
-- `exercise`: provide scope, constraints, acceptance criteria, and graded hints.
-- `review`: classify findings and let the learner attempt important fixes.
-- `debug`: reproduce, gather evidence, test hypotheses, then fix.
-- `pair`: implement a bounded part together and explain Codex-authored portions.
-- `implementation`: enter only with explicit permission; implementation still does not prove mastery.
-
-Do not reset the plan when changing mode or opening a side workstream.
-
-## Handle failure honestly
-
-If builds, tests, paths, locks, or state cannot be verified, report exactly what failed and preserve the last valid state. Do not delete a lock file automatically or reconstruct mastery from chat. For schema v1 state, explain the migration, create a recoverable archive, then run `migrate-v1` only with user approval.
-
-## Finish each response
-
-Lead with the learning outcome. When useful, name the active workstream and attached task, code scope examined, persisted changes, unresolved uncertainty, and one bounded next action. Do not append a note or progress update when nothing durable changed.
+For advanced coordination use [multi-workstream-coordination](references/multi-workstream-coordination.md); for commands and user examples use [usage](references/usage.md). These are reference material, not a checklist for every answer.

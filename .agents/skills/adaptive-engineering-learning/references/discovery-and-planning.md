@@ -10,9 +10,9 @@
 
 ## Existing-state check
 
-Run `inspect` before a first scan. Check `AGENTS.md`, repository-local skills, `.learning/`, other learning/config files, Markdown/Obsidian notes, session history, branch/HEAD, and uncommitted changes. Read existing state rather than initializing again.
+This workflow applies only to a requested learning route or a material re-scan. A question, skill invocation or new Codex task is not discovery. Use `resume` first if state is not already known. For a genuinely new course, run `inspect`, then check applicable instructions, existing learning files, relevant notes, branch/HEAD and uncommitted changes. Read existing state rather than initializing again.
 
-If a plan is active, do not replace it during a re-scan. Read `workspace.json`, active task files, workstreams, and the shared plan-change queue. Produce a change report and ask whether to preserve, revise, pause, or supersede the route. If the user asks only a question, use or open a Q&A workstream without re-scanning unless the necessary code context is stale.
+If a plan is active, do not replace it during a re-scan. Read the current compact context and only affected state/source files. Propose route changes only if the findings warrant them. If the user asks a question, answer in place or use the requested separate Q&A handoff without re-scanning or creating a course.
 
 ## Repository scan
 

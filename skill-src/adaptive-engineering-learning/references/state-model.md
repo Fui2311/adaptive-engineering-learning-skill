@@ -1,5 +1,7 @@
 # State model
 
+The streamlined interface retains schema v2: no migration for existing v2 projects. `resume` reads without initialization; `prepare-qa` adds immutable `questions/<id>.json` snapshots and derived reading pages. Answers live in `questions/<id>-answer.md`. Workstreams may contain optional `recent_explanation` and `thread: {id, host}` fields; these are neither learner evidence nor task status. Older v2 state needs no new fields. A saved source repository/HEAD identifies the historical question context; the destination still verifies current source. Runtime question handoff requires an active/paused route; standalone Q&A needs no course state.
+
 ## Contents
 
 - Storage layout
